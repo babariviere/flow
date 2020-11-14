@@ -4,7 +4,6 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command as PCommand;
-use std::process::Stdio;
 use std::str::FromStr;
 
 #[derive(Clap)]
@@ -94,7 +93,7 @@ fn list_files<P: AsRef<Path>>(path: P, depth: u32) -> Vec<String> {
                 let dir = dir.ok()?;
                 if dir.file_type().ok()?.is_dir() {
                     let file_name = dir.file_name().into_string().ok()?;
-                    if file_name.starts_with(".") {
+                    if file_name.starts_with('.') {
                         return None;
                     }
                     Some(file_name)
@@ -110,7 +109,7 @@ fn list_files<P: AsRef<Path>>(path: P, depth: u32) -> Vec<String> {
             let dir = dir.ok()?;
             if dir.file_type().ok()?.is_dir() {
                 let file_name = dir.file_name().into_string().ok()?;
-                if file_name.starts_with(".") {
+                if file_name.starts_with('.') {
                     return None;
                 }
                 Some(
@@ -289,6 +288,6 @@ fn clone(root: String, project: String) {
                 .expect("should be ok");
             println!("{}", out);
         }
-        Project::Git(url) => {}
+        Project::Git(_url) => {}
     }
 }
