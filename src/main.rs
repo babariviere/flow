@@ -1,4 +1,5 @@
 use clap::Clap;
+use indoc::printdoc;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -15,6 +16,10 @@ struct Opts {
 
 #[derive(Clap)]
 pub enum Command {
+    /// Creates a shell script to use in your project.
+    ///
+    /// Usage: eval \"$(flow setup [root])\"
+    Setup { root: String },
     /// Search for a project in root directory.
     Search { path: Vec<String> },
 }
@@ -29,7 +34,22 @@ fn main() {
     });
 
     match opts.cmd {
+        Command::Setup { root } => setup(root),
         Command::Search { path } => search(root, path.join(" ")),
+    }
+}
+
+fn setup(root: String) {
+    printdoc! {
+        r#"
+        fp() {{
+            _flow_dir=$(command flow --root "{root}" search "$@")
+            _flow_ret=$?
+            [ "$_flow_dir" != "$PWD" ] && cd "$_flow_dir"
+            return $_flow_ret
+        }}
+        "#,
+        root = root
     }
 }
 
