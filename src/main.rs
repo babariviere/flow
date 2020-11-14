@@ -219,7 +219,6 @@ enum Project {
 enum ParseError {
     UnknownPrefix(String),
     InvalidGithubProject(String),
-    NoPrefix,
 }
 
 impl FromStr for Project {
@@ -228,11 +227,11 @@ impl FromStr for Project {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts = s.splitn(2, ':').collect::<Vec<&str>>();
 
-        if parts.len() < 2 {
-            return Err(ParseError::NoPrefix);
-        }
-        let ty = parts[0];
-        let project = parts[1];
+        let (ty, project) = if parts.len() < 2 {
+            ("gh", parts[0])
+        } else {
+            (parts[0], parts[1])
+        };
 
         match ty {
             "gh" | "github" => {
