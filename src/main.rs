@@ -9,6 +9,7 @@ use std::path::Path;
 struct Opts {
     /// Root directory that contains all projects.
     /// Defaults to $HOME/src.
+    #[clap(short, long)]
     root: Option<String>,
     #[clap(subcommand)]
     cmd: Command,
@@ -17,8 +18,7 @@ struct Opts {
 #[derive(Clap)]
 pub enum Command {
     /// Creates a shell script to use in your project.
-    ///
-    /// Usage: eval \"$(flow setup [root])\"
+    /// Usage: eval "$(flow setup [root])"
     Setup { root: String },
     /// Search for a project in root directory.
     Search { path: Vec<String> },
@@ -54,7 +54,7 @@ fn setup(root: String) {
 }
 
 fn search(root: String, query: String) {
-    let dirs = list_files(root, 2);
+    let dirs = list_files(&root, 2);
 
     let mut result = dirs
         .into_iter()
@@ -66,9 +66,12 @@ fn search(root: String, query: String) {
 
     result.sort_by_key(|(score, _)| *score);
 
-    for (score, path) in result {
-        println!("[{}] {}", score, path);
-    }
+    // NOTE: for debug purpose only
+    // for (score, path) in &result {
+    //     println!("[{}] {}", score, path);
+    // }
+    let (_, path) = result.pop().unwrap();
+    println!("{}/{}", root, path);
 }
 
 fn list_files<P: AsRef<Path>>(path: P, depth: u32) -> Vec<String> {
@@ -189,7 +192,7 @@ fn score_part(query: &str, item: &str) -> i32 {
     }
 
     if item_chars.next().is_none() && query_chars.next().is_none() && successive > 0 {
-        score += 10;
+        score += 4;
     }
 
     score
