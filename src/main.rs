@@ -1,10 +1,17 @@
-use clap::Clap;
+use clap::{AppSettings, Clap};
 use indoc::printdoc;
 use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command as PCommand;
 use std::str::FromStr;
+
+use app_dirs::AppInfo;
+
+const APP_INFO: AppInfo = AppInfo {
+    name: "flow",
+    author: "babariviere",
+};
 
 #[derive(Clap)]
 #[clap(author, about, version)]
@@ -26,6 +33,9 @@ pub enum Command {
     Search { path: Vec<String> },
     /// Clone a project
     Clone { project: String },
+    /// Adds a path to the cache
+    #[clap(setting = AppSettings::Hidden)]
+    Add { path: String },
 }
 
 fn main() {
@@ -41,6 +51,7 @@ fn main() {
         Command::Setup { root } => setup(root),
         Command::Search { path } => search(root, path.join(" ")),
         Command::Clone { project } => clone(root, project),
+        Command::Add { path } => add(path),
     }
 }
 
@@ -58,6 +69,12 @@ fn setup(root: String) {
             _flow_ret=$?
             [ "$_flow_dir" != "$PWD" ] && cd "$_flow_dir"
             return $_flow_ret
+        }}
+        _flow_precmd() {{
+            (command flow add "${{PWD:A}}" &)
+        }}
+        [[ -n "${{precmd_functions[(r)_flow_precmd]}}" ]] || {{
+            precmd_functions[$(($#precmd_functions+1))]=_flow_precmd
         }}
         "#,
         root = root
@@ -290,4 +307,40 @@ fn clone(root: String, project: String) {
         }
         Project::Git(_url) => {}
     }
+}
+
+// TODO: use async
+fn read_cache() -> Vec<String> {
+    use std::io::BufRead;
+    let cache_dir = app_dirs::get_app_root(app_dirs::AppDataType::UserCache, &APP_INFO).unwrap();
+    let file = match std::fs::File::open(cache_dir.join("dirs")) {
+        Ok(f) => f,
+        Err(_) => return vec![],
+    };
+
+    let reader = std::io::BufReader::new(file);
+
+    reader.lines().filter_map(|result| result.ok()).collect()
+}
+
+fn write_cache(entries: &[String]) {
+    use itertools::Itertools;
+    use std::io::Write;
+    let cache_dir = app_dirs::get_app_root(app_dirs::AppDataType::UserCache, &APP_INFO).unwrap();
+    std::fs::create_dir_all(&cache_dir).unwrap();
+    let mut file = std::fs::File::create(cache_dir.join("dirs")).unwrap();
+
+    entries.iter().unique().for_each(|entry| {
+        file.write_all(entry.as_bytes()).unwrap();
+        file.write_all(b"\n").unwrap();
+    })
+}
+
+fn add(path: String) {
+    // TODO: convert path to absolute path
+    let path = std::path::PathBuf::from(path);
+    let path = std::fs::canonicalize(path).unwrap().display().to_string();
+    let mut paths = read_cache();
+    paths.push(path);
+    write_cache(&paths);
 }
