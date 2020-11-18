@@ -1,3 +1,4 @@
+mod cache;
 mod cmd;
 
 use clap::{AppSettings, Clap};
@@ -66,33 +67,41 @@ fn main() {
 
 // TODO: add scoring for visited directories (priority for most visited ones)
 fn search(root: String, project: bool, query: String) {
-    use std::collections::HashSet;
-    let mut dirs: HashSet<String> = list_files(&root, 2)
+    let cache = read_cache();
+
+    let mut dirs: cache::Cache = list_files(&root, 2)
         .into_iter()
         .map(|path| format!("{}/{}", root, path))
+        .map(|path| {
+            let score = if project {
+                999.
+            } else {
+                cache.get(&path).map(|val| val.score()).unwrap_or(0.)
+            };
+            (path, cache::CacheEntry::new(score))
+        })
         .collect();
 
     if !project {
-        let cache = read_cache();
-        dirs.extend(cache);
+        dirs.extend(cache.into_iter());
     }
 
     let mut result = dirs
-        .into_iter()
-        .map(|item| {
-            let score = score_query(&query, &item);
-            (score, item)
+        .iter()
+        .map(|(path, entry)| {
+            let score = score_query(&query, &path);
+            (score, path, entry.score())
         })
-        .collect::<Vec<(i32, String)>>();
+        .collect::<Vec<(i32, &String, f32)>>();
 
-    result.sort_by_key(|(score, _)| *score);
+    result.sort_by(|(isa, _, sa), (isb, _, sb)| isa.cmp(isb).then(sa.partial_cmp(sb).unwrap()));
 
     // NOTE: for debug purpose only
     // for (score, path) in &result {
     //     println!("[{}] {}", score, path);
     // }
     // TODO: do not use unwrap
-    let (_, path) = result.pop().unwrap();
+    let (_, path, _) = result.pop().unwrap();
     println!("{}", path);
 }
 
@@ -323,37 +332,30 @@ fn clone(root: String, project: String) {
 }
 
 // TODO: use async
-fn read_cache() -> Vec<String> {
-    use std::io::BufRead;
+fn read_cache() -> cache::Cache {
     let cache_dir = app_dirs::get_app_root(app_dirs::AppDataType::UserCache, &APP_INFO).unwrap();
     let file = match std::fs::File::open(cache_dir.join("dirs")) {
         Ok(f) => f,
-        Err(_) => return vec![],
+        Err(_) => return cache::Cache::new(),
     };
 
-    let reader = std::io::BufReader::new(file);
-
-    reader.lines().filter_map(|result| result.ok()).collect()
+    cache::Cache::from_reader(std::io::BufReader::new(file)).unwrap()
 }
 
-fn write_cache(entries: &[String]) {
-    use itertools::Itertools;
-    use std::io::Write;
+fn write_cache(cache: &cache::Cache) {
     let cache_dir = app_dirs::get_app_root(app_dirs::AppDataType::UserCache, &APP_INFO).unwrap();
     std::fs::create_dir_all(&cache_dir).unwrap();
-    let mut file = std::fs::File::create(cache_dir.join("dirs")).unwrap();
+    let file = std::fs::File::create(cache_dir.join("dirs")).unwrap();
 
-    entries.iter().unique().for_each(|entry| {
-        file.write_all(entry.as_bytes()).unwrap();
-        file.write_all(b"\n").unwrap();
-    })
+    cache.to_writer(file).unwrap();
 }
 
 fn add(path: String) {
     // TODO: convert path to absolute path
     let path = std::path::PathBuf::from(path);
     let path = std::fs::canonicalize(path).unwrap().display().to_string();
-    let mut paths = read_cache();
-    paths.push(path);
-    write_cache(&paths);
+    let mut cache = read_cache();
+    cache.add(path);
+    cache.aging(None);
+    write_cache(&cache);
 }
