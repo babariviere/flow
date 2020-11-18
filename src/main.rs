@@ -24,6 +24,9 @@ struct Opts {
     cmd: Command,
 }
 
+// TODO: add search in project (search for git root and search inside)
+// TODO: cleanup code (split by subcommands + add a module for cache and another one for scoring)
+
 #[derive(Clap)]
 pub enum Command {
     /// Creates a shell script to use in your project.
@@ -91,7 +94,7 @@ fn setup(root: String) {
     }
 }
 
-// TODO: add scoring for visited directories (priority for )
+// TODO: add scoring for visited directories (priority for most visited ones)
 fn search(root: String, project: bool, query: String) {
     use std::collections::HashSet;
     let mut dirs: HashSet<String> = list_files(&root, 2)
