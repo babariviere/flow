@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 app_dirs = "1.2.1"
 clap = "3.0.0-beta.2"
+fs2 = "0.4.3"
 indoc = "1.0.3"
