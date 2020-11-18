@@ -12,6 +12,7 @@ pub fn cache_dir() -> PathBuf {
     app_dirs::get_app_root(app_dirs::AppDataType::UserCache, &APP_INFO).unwrap()
 }
 
+// NOTE: maybe move those to cache module?
 // TODO: use async
 pub fn read_cache() -> cache::Result<Cache> {
     let cache_dir = cache_dir();

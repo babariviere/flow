@@ -10,7 +10,7 @@ use std::process::Command as PCommand;
 use std::str::FromStr;
 
 use crate::cmd::*;
-use crate::util::{read_cache, write_cache};
+use crate::util::read_cache;
 
 #[derive(Clap)]
 #[clap(author, about, version)]
@@ -41,7 +41,7 @@ pub enum Command {
     Clone { project: String },
     /// Adds a path to the cache
     #[clap(setting = AppSettings::Hidden)]
-    Add { path: String },
+    Add(add::Opts),
 }
 
 fn main() {
@@ -57,11 +57,10 @@ fn main() {
         Command::Setup(opts) => setup::run(opts),
         Command::Search { project, path } => search(root, project, path.join(" ")),
         Command::Clone { project } => clone(root, project),
-        Command::Add { path } => add(path),
+        Command::Add(opts) => add::run(opts),
     }
 }
 
-// TODO: add scoring for visited directories (priority for most visited ones)
 fn search(root: String, project: bool, query: String) {
     // TODO: handle error
     let cache = read_cache().unwrap();
@@ -326,15 +325,4 @@ fn clone(root: String, project: String) {
         }
         Project::Git(_url) => {}
     }
-}
-
-fn add(path: String) {
-    // TODO: convert path to absolute path
-    let path = std::path::PathBuf::from(path);
-    let path = std::fs::canonicalize(path).unwrap().display().to_string();
-    // TODO: handle error
-    let mut cache = read_cache().unwrap();
-    cache.add(path);
-    cache.aging(None);
-    write_cache(&cache).unwrap();
 }
