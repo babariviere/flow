@@ -1,13 +1,12 @@
 mod cache;
 mod cmd;
+mod project;
 mod util;
 
 use clap::{AppSettings, Clap};
 use std::env;
 use std::fs;
 use std::path::Path;
-use std::process::Command as PCommand;
-use std::str::FromStr;
 
 use crate::cmd::*;
 use crate::util::read_cache;
@@ -38,7 +37,7 @@ pub enum Command {
         path: Vec<String>,
     },
     /// Clone a project
-    Clone { project: String },
+    Clone(clone::Opts),
     /// Adds a path to the cache
     #[clap(setting = AppSettings::Hidden)]
     Add(add::Opts),
@@ -56,7 +55,7 @@ fn main() {
     match opts.cmd {
         Command::Setup(opts) => setup::run(opts),
         Command::Search { project, path } => search(root, project, path.join(" ")),
-        Command::Clone { project } => clone(root, project),
+        Command::Clone(opts) => clone::run(root, opts),
         Command::Add(opts) => add::run(opts),
     }
 }
@@ -242,87 +241,4 @@ fn score_part(query: &str, item: &str) -> i32 {
     }
 
     score
-}
-
-enum Project {
-    Github { owner: String, repo: String },
-    Git(String),
-}
-
-#[derive(Debug)]
-enum ParseError {
-    UnknownPrefix(String),
-    InvalidGithubProject(String),
-}
-
-impl FromStr for Project {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts = s.splitn(2, ':').collect::<Vec<&str>>();
-
-        let (ty, project) = if parts.len() < 2 {
-            ("gh", parts[0])
-        } else {
-            (parts[0], parts[1])
-        };
-
-        match ty {
-            "gh" | "github" => {
-                let parts = project.split('/').collect::<Vec<&str>>();
-                if parts.len() != 2 {
-                    return Err(ParseError::InvalidGithubProject(project.to_owned()));
-                }
-                let owner = parts[0].to_owned();
-                let repo = parts[1].trim_end_matches(".git").to_owned();
-
-                Ok(Self::Github { owner, repo })
-            }
-            // TODO: parse git url into:
-            // - protocol (ssh?) or maybe full url?
-            // - host
-            // - path
-            "git" => Ok(Self::Git(project.to_string())),
-            ty => Err(ParseError::UnknownPrefix(ty.to_owned())),
-        }
-    }
-}
-
-fn clone(root: String, project: String) {
-    let project = match Project::from_str(&project) {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("{:?}", e);
-            return;
-        }
-    };
-
-    match project {
-        Project::Github { owner, repo } => {
-            let repo_url = format!("git@github.com:{}/{}.git", owner, repo);
-            let out = format!("{}/github.com/{}/{}", root, owner, repo);
-
-            if Path::new(&out).exists() {
-                println!("{}", out);
-                return;
-            }
-            use std::os::unix::io::{AsRawFd, FromRawFd};
-            let stderr_fd =
-                unsafe { std::process::Stdio::from_raw_fd(std::io::stderr().as_raw_fd()) };
-
-            PCommand::new("git")
-                .args(&[
-                    "clone",
-                    "--recursive",
-                    "--",
-                    repo_url.as_str(),
-                    out.as_str(),
-                ])
-                .stdout(stderr_fd)
-                .status()
-                .expect("should be ok");
-            println!("{}", out);
-        }
-        Project::Git(_url) => {}
-    }
 }
