@@ -30,7 +30,11 @@ pub enum Command {
     /// Usage: eval "$(flow setup [root])"
     Setup { root: String },
     /// Search for a project in root directory.
-    Search { path: Vec<String> },
+    Search {
+        #[clap(short, long)]
+        project: bool,
+        path: Vec<String>,
+    },
     /// Clone a project
     Clone { project: String },
     /// Adds a path to the cache
@@ -49,7 +53,7 @@ fn main() {
 
     match opts.cmd {
         Command::Setup { root } => setup(root),
-        Command::Search { path } => search(root, path.join(" ")),
+        Command::Search { project, path } => search(root, project, path.join(" ")),
         Command::Clone { project } => clone(root, project),
         Command::Add { path } => add(path),
     }
@@ -60,6 +64,12 @@ fn setup(root: String) {
         r#"
         fs() {{
             _flow_dir=$(command flow --root "{root}" search "$@")
+            _flow_ret=$?
+            [ "$_flow_dir" != "$PWD" ] && cd "$_flow_dir"
+            return $_flow_ret
+        }}
+        fsp() {{
+            _flow_dir=$(command flow --root "{root}" search --project "$@")
             _flow_ret=$?
             [ "$_flow_dir" != "$PWD" ] && cd "$_flow_dir"
             return $_flow_ret
@@ -81,8 +91,18 @@ fn setup(root: String) {
     }
 }
 
-fn search(root: String, query: String) {
-    let dirs = list_files(&root, 2);
+// TODO: add scoring for visited directories (priority for )
+fn search(root: String, project: bool, query: String) {
+    use std::collections::HashSet;
+    let mut dirs: HashSet<String> = list_files(&root, 2)
+        .into_iter()
+        .map(|path| format!("{}/{}", root, path))
+        .collect();
+
+    if !project {
+        let cache = read_cache();
+        dirs.extend(cache);
+    }
 
     let mut result = dirs
         .into_iter()
@@ -98,8 +118,9 @@ fn search(root: String, query: String) {
     // for (score, path) in &result {
     //     println!("[{}] {}", score, path);
     // }
+    // TODO: do not use unwrap
     let (_, path) = result.pop().unwrap();
-    println!("{}/{}", root, path);
+    println!("{}", path);
 }
 
 fn list_files<P: AsRef<Path>>(path: P, depth: u32) -> Vec<String> {
@@ -150,6 +171,9 @@ fn score_query(query: &str, path: &str) -> i32 {
     let query_len = query.len();
     let items_len = items.len();
     let first_query = query.drain(..1).collect::<Vec<&str>>().pop().unwrap();
+    if items_len < query_len {
+        return 0;
+    }
     let (first_item_pos, first_score) = items
         .iter()
         .take(items_len - query_len + 1)
@@ -167,8 +191,23 @@ fn score_query(query: &str, path: &str) -> i32 {
     let mut items = items.drain(first_item_pos + 1..);
 
     for query in query {
-        let item = items.next().expect("unreachable");
-        global_score += score_part(query, item);
+        loop {
+            let item = match items.next() {
+                Some(i) => i,
+                None => return 0,
+            };
+            let score = score_part(query, item);
+            // TODO: which score threshold to use?
+            if score < 5 {
+                continue;
+            }
+            global_score += score;
+            break;
+        }
+    }
+
+    if items.next().is_none() {
+        global_score += 10;
     }
 
     global_score
@@ -219,6 +258,7 @@ fn score_part(query: &str, item: &str) -> i32 {
         }
     }
 
+    // TODO: which score to use for best match?
     if item_chars.next().is_none() && query_chars.next().is_none() && successive > 0 {
         score += 4;
     }
