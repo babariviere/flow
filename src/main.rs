@@ -1,5 +1,6 @@
 mod cache;
 mod cmd;
+mod util;
 
 use clap::{AppSettings, Clap};
 use std::env;
@@ -9,12 +10,7 @@ use std::process::Command as PCommand;
 use std::str::FromStr;
 
 use crate::cmd::*;
-use app_dirs::AppInfo;
-
-const APP_INFO: AppInfo = AppInfo {
-    name: "flow",
-    author: "babariviere",
-};
+use crate::util::{read_cache, write_cache};
 
 #[derive(Clap)]
 #[clap(author, about, version)]
@@ -67,7 +63,8 @@ fn main() {
 
 // TODO: add scoring for visited directories (priority for most visited ones)
 fn search(root: String, project: bool, query: String) {
-    let cache = read_cache();
+    // TODO: handle error
+    let cache = read_cache().unwrap();
 
     let mut dirs: cache::Cache = list_files(&root, 2)
         .into_iter()
@@ -331,31 +328,13 @@ fn clone(root: String, project: String) {
     }
 }
 
-// TODO: use async
-fn read_cache() -> cache::Cache {
-    let cache_dir = app_dirs::get_app_root(app_dirs::AppDataType::UserCache, &APP_INFO).unwrap();
-    let file = match std::fs::File::open(cache_dir.join("dirs")) {
-        Ok(f) => f,
-        Err(_) => return cache::Cache::new(),
-    };
-
-    cache::Cache::from_reader(std::io::BufReader::new(file)).unwrap()
-}
-
-fn write_cache(cache: &cache::Cache) {
-    let cache_dir = app_dirs::get_app_root(app_dirs::AppDataType::UserCache, &APP_INFO).unwrap();
-    std::fs::create_dir_all(&cache_dir).unwrap();
-    let file = std::fs::File::create(cache_dir.join("dirs")).unwrap();
-
-    cache.to_writer(file).unwrap();
-}
-
 fn add(path: String) {
     // TODO: convert path to absolute path
     let path = std::path::PathBuf::from(path);
     let path = std::fs::canonicalize(path).unwrap().display().to_string();
-    let mut cache = read_cache();
+    // TODO: handle error
+    let mut cache = read_cache().unwrap();
     cache.add(path);
     cache.aging(None);
-    write_cache(&cache);
+    write_cache(&cache).unwrap();
 }
