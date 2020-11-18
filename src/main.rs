@@ -1,11 +1,13 @@
+mod cmd;
+
 use clap::{AppSettings, Clap};
-use indoc::printdoc;
 use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command as PCommand;
 use std::str::FromStr;
 
+use crate::cmd::*;
 use app_dirs::AppInfo;
 
 const APP_INFO: AppInfo = AppInfo {
@@ -31,7 +33,7 @@ struct Opts {
 pub enum Command {
     /// Creates a shell script to use in your project.
     /// Usage: eval "$(flow setup [root])"
-    Setup { root: String },
+    Setup(setup::Opts),
     /// Search for a project in root directory.
     Search {
         #[clap(short, long)]
@@ -55,42 +57,10 @@ fn main() {
     });
 
     match opts.cmd {
-        Command::Setup { root } => setup(root),
+        Command::Setup(opts) => setup::run(opts),
         Command::Search { project, path } => search(root, project, path.join(" ")),
         Command::Clone { project } => clone(root, project),
         Command::Add { path } => add(path),
-    }
-}
-
-fn setup(root: String) {
-    printdoc! {
-        r#"
-        fs() {{
-            _flow_dir=$(command flow --root "{root}" search "$@")
-            _flow_ret=$?
-            [ "$_flow_dir" != "$PWD" ] && cd "$_flow_dir"
-            return $_flow_ret
-        }}
-        fsp() {{
-            _flow_dir=$(command flow --root "{root}" search --project "$@")
-            _flow_ret=$?
-            [ "$_flow_dir" != "$PWD" ] && cd "$_flow_dir"
-            return $_flow_ret
-        }}
-        fp() {{
-            _flow_dir=$(command flow --root "{root}" clone "$@")
-            _flow_ret=$?
-            [ "$_flow_dir" != "$PWD" ] && cd "$_flow_dir"
-            return $_flow_ret
-        }}
-        _flow_precmd() {{
-            (command flow add "${{PWD:A}}" &)
-        }}
-        [[ -n "${{precmd_functions[(r)_flow_precmd]}}" ]] || {{
-            precmd_functions[$(($#precmd_functions+1))]=_flow_precmd
-        }}
-        "#,
-        root = root
     }
 }
 
