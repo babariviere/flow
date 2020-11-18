@@ -52,6 +52,7 @@ pub fn run(root: String, opts: Opts) {
     println!("{}", path);
 }
 
+// TODO: do we need to move them in another module?
 fn score_query(query: &str, path: &str) -> i32 {
     let mut query = query.split(' ').collect::<Vec<&str>>();
     let mut items = path.split('/').collect::<Vec<&str>>();

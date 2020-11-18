@@ -1,6 +1,6 @@
 use clap::Clap;
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
 use std::str::FromStr;
 
 use crate::project::Project;
