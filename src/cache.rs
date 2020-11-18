@@ -1,7 +1,10 @@
 use std::collections::HashMap;
+use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::iter;
 use std::ops::Deref;
+
+use fs2::FileExt;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -36,15 +39,34 @@ impl CacheEntry {
     }
 }
 
-#[derive(Debug, Default)]
+fn create_lock() -> File {
+    let cache = crate::util::cache_dir();
+    std::fs::create_dir_all(&cache).unwrap();
+    let cache = cache.join("dirs.lock");
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(cache)
+        .unwrap();
+    file.lock_exclusive().unwrap();
+    file
+}
+
+#[derive(Debug)]
 pub struct Cache {
     inner: HashMap<String, CacheEntry>,
+    // only used for file drop
+    lock: File,
 }
 
 impl Cache {
     /// Create a new empty cache
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            inner: HashMap::new(),
+            lock: create_lock(),
+        }
     }
 
     pub fn add(&mut self, path: String) {
@@ -86,7 +108,10 @@ impl Cache {
             })
             .collect::<Result<HashMap<String, CacheEntry>>>()?;
 
-        Ok(Cache { inner: hash_map })
+        Ok(Cache {
+            inner: hash_map,
+            lock: create_lock(),
+        })
     }
 
     pub fn to_writer<W: Write>(&self, mut writer: W) -> Result<()> {
@@ -106,6 +131,7 @@ impl iter::FromIterator<Item> for Cache {
     {
         Cache {
             inner: HashMap::from_iter(iter),
+            lock: create_lock(),
         }
     }
 }
