@@ -1,0 +1,46 @@
+= Flow: fast directory/project switcher
+
+== Installation
+
+For macOS users:
+
+[source,sh]
+====
+brew tap babariviere/tools
+brew install babariviere/tools/flow-sh
+====
+
+The brewfile is named `flow-sh` since `flow` already exists in homebrew/core.
+
+== Usage
+
+To use it, add this in your `.zshrc` (bash support is not here for now):
+
+[source,sh]
+====
+# Replace ~/src with your root project directory
+eval $(flow setup "~/src")
+====
+
+See <<hierarchy>> to see how the files will be created.
+
+=== Neovim
+
+This project has a neovim plugin to have fast project switching.
+
+You can find it here: https://github.com/babariviere/flow.nvim
+
+[#hierarchy]
+=== Hierarchy
+
+====
+.
+├─ github.com
+│  └── <user>
+│     └── <repo>
+└─ <host>
+   └── <user>
+      └── <repo>
+====
+
+
