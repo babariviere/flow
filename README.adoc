@@ -52,6 +52,34 @@ flow clone babariviere/flow
 flow clone gh:babariviere/flow # set github as a source (it's the default so you can omit the `gh:`)
 ----
 
+==== Example
+
+Search for a folder:
+
+[source,sh]
+----
+$ flow search flow src
+~/src/github.com/babariviere/flow/src
+----
+
+Search for a project:
+
+[source,sh]
+----
+$ flow search --project baba flow
+~/src/github.com/babariviere/flow
+----
+
+Clone a project:
+
+[source,sh]
+----
+$ flow clone babariviere/flow
+# ... git clone output (in stderr)
+~/src/github.com/babariviere/flow
+----
+
+
 [#hierarchy]
 === Hierarchy
 
