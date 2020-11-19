@@ -13,7 +13,7 @@ use crate::cmd::*;
 struct Opts {
     /// Root directory that contains all projects.
     /// Defaults to $HOME/src.
-    #[clap(short, long)]
+    #[clap(short, long, env = "FLOW_ROOT")]
     root: Option<String>,
     #[clap(subcommand)]
     cmd: Command,
