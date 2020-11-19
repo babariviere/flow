@@ -1,14 +1,21 @@
 = Flow: fast directory/project switcher
+:toc:
+:source-highlighter: rouge
+:sectanchors:
+ifdef::env-github[]
+:warning-caption: :warning:
+:note-caption: :information_source:
+endif::[]
 
 == Installation
 
 For macOS users:
 
 [source,sh]
-====
+----
 brew tap babariviere/tools
 brew install babariviere/tools/flow-sh
-====
+----
 
 The brewfile is named `flow-sh` since `flow` already exists in homebrew/core.
 
@@ -17,23 +24,38 @@ The brewfile is named `flow-sh` since `flow` already exists in homebrew/core.
 To use it, add this in your `.zshrc` (bash support is not here for now):
 
 [source,sh]
-====
+----
 # Replace ~/src with your root project directory
 eval $(flow setup "~/src")
-====
+----
 
 See <<hierarchy>> to see how the files will be created.
 
-=== Neovim
+Plugins:
 
-This project has a neovim plugin to have fast project switching.
+- Neovim: https://github.com/babariviere/flow.nvim
 
-You can find it here: https://github.com/babariviere/flow.nvim
+=== Commands
+
+You can also use this tool to pipe into other commands. For this, we have multiple commands.
+
+[source,sh]
+----
+# Search for a visited file or a project
+flow search baba flow
+
+# Search for a project
+flow search --project baba flow
+
+# Clone a project and print his path
+flow clone babariviere/flow
+flow clone gh:babariviere/flow # set github as a source (it's the default so you can omit the `gh:`)
+----
 
 [#hierarchy]
 === Hierarchy
 
-====
+----
 .
 ├─ github.com
 │  └── <user>
@@ -41,6 +63,6 @@ You can find it here: https://github.com/babariviere/flow.nvim
 └─ <host>
    └── <user>
       └── <repo>
-====
+----
 
 
