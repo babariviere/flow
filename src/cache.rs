@@ -57,9 +57,10 @@ impl Cache {
         let score = self.inner.values().fold(0., |acc, v| acc + v.score);
 
         if score > max_score {
-            for val in self.inner.values_mut() {
-                val.score *= 0.99;
-            }
+            self.inner.retain(|_, v| {
+                v.score *= 0.99;
+                v.score >= 1.
+            });
         }
     }
 
