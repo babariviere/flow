@@ -11,7 +11,13 @@ pub struct Opts {
 }
 
 pub fn run(root: String, opts: Opts) {
-    let query = opts.path.join(" ");
+    let query = opts
+        .path
+        .iter()
+        .map(|p| p.split("/").map(|p| p.to_owned()).collect::<Vec<String>>())
+        .flatten()
+        .collect::<Vec<String>>()
+        .join(" ");
 
     // TODO: handle error
     let cache = read_cache().unwrap();
