@@ -1,14 +1,27 @@
 use std::str::FromStr;
+use url::Url;
 
 pub enum Project {
-    Github { owner: String, repo: String },
-    Git(String),
+    Github {
+        owner: String,
+        repo: String,
+    },
+    Git {
+        url: String,
+        domain: String,
+        owner: String,
+        repo: String,
+    },
 }
 
 #[derive(Debug)]
 pub enum ParseError {
     UnknownPrefix(String),
     InvalidGithubProject(String),
+    Url(url::ParseError),
+    MissingDomain,
+    MissingOwner,
+    MissingRepo,
 }
 
 impl FromStr for Project {
@@ -34,12 +47,29 @@ impl FromStr for Project {
 
                 Ok(Self::Github { owner, repo })
             }
-            // TODO: parse git url into:
-            // - protocol (ssh?) or maybe full url?
-            // - host
-            // - path
-            "git" => Ok(Self::Git(project.to_string())),
+            "http" | "https" | "ssh" | "git+ssh" => parse_url(s),
+            prefix if prefix.contains("@") => {
+                parse_url(format!("ssh://{}/{}", parts[0], parts[1]).as_str())
+            }
             ty => Err(ParseError::UnknownPrefix(ty.to_owned())),
         }
     }
+}
+
+fn parse_url(url: &str) -> Result<Project, ParseError> {
+    let u = match Url::parse(url) {
+        Ok(u) => u,
+        Err(e) => return Err(ParseError::Url(e)),
+    };
+
+    let mut path = u.path_segments().ok_or(ParseError::MissingOwner)?;
+    let owner = path.next().ok_or(ParseError::MissingOwner)?.to_owned();
+    let repo = path.next().ok_or(ParseError::MissingRepo)?.to_owned();
+
+    Ok(Project::Git {
+        url: url.to_owned(),
+        domain: u.host_str().ok_or(ParseError::MissingDomain)?.to_owned(),
+        owner,
+        repo,
+    })
 }
