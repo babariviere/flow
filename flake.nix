@@ -10,16 +10,23 @@
     flake-utils.lib.eachDefaultSystem (system:
       let pkgs = nixpkgs.legacyPackages.${system};
       in {
-        packages.flow = pkgs.rustPlatform.buildRustPackage rec {
-          name = "flow";
-          version = "git";
+        packages = {
+          flow = pkgs.rustPlatform.buildRustPackage rec {
+            name = "flow";
+            version = "git";
 
-          src = ./.;
+            src = ./.;
 
-          cargoSha256 = "sha256-/wHRjHl6Iv1ysqZh+EB78x5KjkqPctkyZmAEY96FaPM=";
+            cargoSha256 = "sha256-/wHRjHl6Iv1ysqZh+EB78x5KjkqPctkyZmAEY96FaPM=";
+          };
+
+          fishPlugins.flow = pkgs.fishPlugins.buildFishPlugin {
+            pname = "flow";
+            version = "git";
+
+            src = ./share/fish;
+          };
         };
-
         defaultPackage = self.packages.${system}.flow;
-
       });
 }
