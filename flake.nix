@@ -19,13 +19,6 @@
 
             cargoSha256 = "sha256-/wHRjHl6Iv1ysqZh+EB78x5KjkqPctkyZmAEY96FaPM=";
           };
-
-          fishPlugins.flow = pkgs.fishPlugins.buildFishPlugin {
-            pname = "flow";
-            version = "git";
-
-            src = ./share/fish;
-          };
         };
         defaultPackage = self.packages.${system}.flow;
       });
